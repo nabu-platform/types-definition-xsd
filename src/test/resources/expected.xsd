@@ -1,0 +1,31 @@
+<schema xmlns="http://www.w3.org/2001/XMLSchema">
+	<import ></import>
+    <element name="company">
+        <complexType>
+            <sequence>
+                <element maxOccurs="unbounded" name="employees" nillable="true">
+                    <complexType>
+                        <sequence>
+                            <element name="startDay" nillable="true" type="dateTime"/>
+                            <element name="age" nillable="true" type="int"/>
+                            <element name="firstName" nillable="true"/>
+                            <element name="lastName" nillable="true"/>
+                        </sequence>
+                        <attribute name="id"/>
+                    </complexType>
+                </element>
+                <element name="billingNumber" nillable="true"/>
+                <element name="address" nillable="true">
+                    <simpleType>
+                        <restriction base="string">
+                            <pattern value=".+"/>
+                        </restriction>
+                    </simpleType>
+                </element>
+            </sequence>
+            <attribute name="unit"/>
+            <attribute name="name"/>
+        </complexType>
+    </element>
+</schema>
+
