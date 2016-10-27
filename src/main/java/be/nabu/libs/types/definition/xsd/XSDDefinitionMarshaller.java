@@ -185,7 +185,8 @@ public class XSDDefinitionMarshaller extends XMLDefinitionMarshaller {
 		}
 		else {
 			Element importedSchema = getTargetSchema(parent, getNamespace(complexType), isElementQualified, isAttributeQualified);
-			if (registry.getComplexType(getNamespace(complexType), complexType.getName()) == null) {
+			// register using the actual complex type namespace so we don't get doubles once we start playing with namespaces
+			if (registry.getComplexType(complexType.getNamespace(), complexType.getName()) == null) {
 				registry.register(complexType);
 				writeComplexType(importedSchema, complexType);
 			}
