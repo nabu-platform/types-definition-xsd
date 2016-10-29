@@ -172,7 +172,7 @@ public class XSDDefinitionMarshaller extends XMLDefinitionMarshaller {
 		else {
 			Element importedSchema = getTargetSchema(parent, getNamespace(simpleType), isElementQualified, isAttributeQualified);
 			// only define it if it isn't defined already
-			if (registry.getSimpleType(getNamespace(simpleType), simpleType.getName()) == null) {
+			if (registry.getSimpleType(simpleType.getNamespace(), simpleType.getName()) == null) {
 				registry.register(simpleType);
 				writeSimpleType(importedSchema, simpleType);
 			}
@@ -452,10 +452,12 @@ public class XSDDefinitionMarshaller extends XMLDefinitionMarshaller {
 	protected void writeElement(Node parent, be.nabu.libs.types.api.Element<?> child) {
 		Document document = parent.getOwnerDocument();
 
-		Element childElement = document.createElement(child instanceof Attribute ? "attribute" : "element");
+		boolean isAttribute = child instanceof Attribute || child.getName().startsWith("@");
+		Element childElement = document.createElement(isAttribute ? "attribute" : "element");
 		
-		if (child instanceof Attribute) {
-			writeAttributes(childElement, blacklist(whitelist(child.getProperties(), attributeWhitelist), new NillableProperty(), new MinOccursProperty(), new MaxOccursProperty()));
+		if (isAttribute) {
+			writeAttributes(childElement, blacklist(whitelist(child.getProperties(), attributeWhitelist), new NillableProperty(), new MinOccursProperty(), new MaxOccursProperty(), NameProperty.getInstance()));
+			childElement.setAttribute("name", child.getName().startsWith("@") ? child.getName().substring(1) : child.getName());
 			if (ValueUtils.getValue(new MinOccursProperty(), child.getProperties()) == 0) {
 				childElement.setAttribute("use", "optional");
 			}
@@ -465,11 +467,11 @@ public class XSDDefinitionMarshaller extends XMLDefinitionMarshaller {
 		}
 		
 		if (!childElement.hasAttribute("name")) {
-			childElement.setAttribute("name", child.getType().getName(child.getProperties()));
+			childElement.setAttribute("name", child.getType().getName(child.getProperties()).replaceFirst("^@", ""));
 		}
 		
 		// elements can just be added to the sequence
-		if (!(child instanceof Attribute)) {
+		if (!isAttribute) {
 			parent.appendChild(childElement);
 		}
 		// attributes have to appear after the sequence
@@ -524,7 +526,8 @@ public class XSDDefinitionMarshaller extends XMLDefinitionMarshaller {
 		Element restrictionElement = parent.getOwnerDocument().createElement("restriction");
 		// you can extend a basic type (like string) or another simple type
 		// note that the restrictions are defined in the element around the type, not the type itself
-		String simpleTypeName = simpleType.getSuperType() == null ? simpleType.getName() : simpleType.getSuperType().getName();
+		// assume default string as parent is none is given
+		String simpleTypeName = simpleType.getSuperType() == null ? "string" : simpleType.getSuperType().getName();
 		restrictionElement.setAttribute("base", simpleTypeName);
 		Value<?> [] restrictedDefinitions = whitelist(simpleType.getProperties(), restrictionWhitelist);
 		for (Value<?> restrictedDefinition : restrictedDefinitions) {
