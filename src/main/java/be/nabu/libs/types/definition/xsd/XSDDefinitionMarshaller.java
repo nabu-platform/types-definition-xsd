@@ -497,7 +497,7 @@ public class XSDDefinitionMarshaller extends XMLDefinitionMarshaller {
 				}
 			}
 			
-			String typeName = child.getType().getName();
+			String typeName = child.getType().getName(child.getProperties());
 			// for all custom types, a "Type" suffix is added because ideally you want to follow the proper naming convention but you can't force this
 			String suffix = NAMESPACE.equals(getNamespace(child.getType())) ? "" : "Type";
 			childElement.setAttribute("type", prefix + typeName + suffix);
