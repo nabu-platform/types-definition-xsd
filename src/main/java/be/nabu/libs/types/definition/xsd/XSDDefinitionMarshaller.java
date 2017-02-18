@@ -25,6 +25,7 @@ import be.nabu.libs.types.TypeRegistryImpl;
 import be.nabu.libs.types.TypeUtils;
 import be.nabu.libs.types.api.Attribute;
 import be.nabu.libs.types.api.ComplexType;
+import be.nabu.libs.types.api.DefinedType;
 import be.nabu.libs.types.api.Group;
 import be.nabu.libs.types.api.MarshalException;
 import be.nabu.libs.types.api.SimpleType;
@@ -63,7 +64,7 @@ public class XSDDefinitionMarshaller extends XMLDefinitionMarshaller {
 	/**
 	 * used to keep track of which types were already marshalled
 	 */
-	private TypeRegistryImpl registry = new TypeRegistryImpl();
+	private TypeRegistryImpl registry;
 	
 	/**
 	 * You can either show the entire type in one namespace
@@ -113,6 +114,12 @@ public class XSDDefinitionMarshaller extends XMLDefinitionMarshaller {
 	};
 	
 	private Boolean isElementQualified = false, isAttributeQualified = false;
+	
+	
+	public XSDDefinitionMarshaller() {
+		registry = new TypeRegistryImpl();
+		registry.setUseTypeIds(true);
+	}
 	
 	/**
 	 * The following definitions are retrofits to reuse the logic outside of this class
@@ -172,7 +179,7 @@ public class XSDDefinitionMarshaller extends XMLDefinitionMarshaller {
 		else {
 			Element importedSchema = getTargetSchema(parent, getNamespace(simpleType), isElementQualified, isAttributeQualified);
 			// only define it if it isn't defined already
-			if (registry.getSimpleType(simpleType.getNamespace(), simpleType.getName()) == null) {
+			if (registry.getSimpleType(simpleType.getNamespace(), getTypeName(simpleType)) == null) {
 				registry.register(simpleType);
 				writeSimpleType(importedSchema, simpleType);
 			}
@@ -186,7 +193,7 @@ public class XSDDefinitionMarshaller extends XMLDefinitionMarshaller {
 		else {
 			Element importedSchema = getTargetSchema(parent, getNamespace(complexType), isElementQualified, isAttributeQualified);
 			// register using the actual complex type namespace so we don't get doubles once we start playing with namespaces
-			if (registry.getComplexType(complexType.getNamespace(), complexType.getName()) == null) {
+			if (registry.getComplexType(complexType.getNamespace(), getTypeName(complexType)) == null) {
 				registry.register(complexType);
 				writeComplexType(importedSchema, complexType);
 			}
@@ -290,6 +297,21 @@ public class XSDDefinitionMarshaller extends XMLDefinitionMarshaller {
 		return list.toArray(new Value[0]);
 	}
 	
+	private String getTypeName(Type type) {
+		// xsd types
+		if (NAMESPACE.equals(getNamespace(type))) {
+			return type.getName();
+		}
+		// globally defined types
+		else if (type instanceof DefinedType) {
+			return ((DefinedType) type).getId();
+		}
+		else {
+			// for all custom types, a "Type" suffix is added because ideally you want to follow the proper naming convention but you can't force this
+			return type.getName() + "Type";
+		}
+	}
+	
 	protected void writeComplexType(Node parent, ComplexType type) {
 		Document document = parent.getOwnerDocument();
 
@@ -297,7 +319,7 @@ public class XSDDefinitionMarshaller extends XMLDefinitionMarshaller {
 		
 		// if it's standalone, register the name
 		if (parent.getNodeName().equals("schema")) {
-			complexTypeElement.setAttribute("name", type.getName() + "Type");
+			complexTypeElement.setAttribute("name", getTypeName(type));
 		}
 		
 		writeAttributes(complexTypeElement, blacklist(whitelist(type.getProperties(), attributeWhitelist), NameProperty.getInstance()));
@@ -337,7 +359,6 @@ public class XSDDefinitionMarshaller extends XMLDefinitionMarshaller {
 			if (type.getSuperType() instanceof ComplexType) {
 				define(parent, (ComplexType) type.getSuperType());
 			}
-			
 		}
 		while (childIterator.hasNext()) {
 			be.nabu.libs.types.api.Element<?> child = childIterator.next();
@@ -478,7 +499,6 @@ public class XSDDefinitionMarshaller extends XMLDefinitionMarshaller {
 		else {
 			parent.getParentNode().appendChild(childElement);
 		}
-		
 		// if the type is named, make sure it exists on the root somewhere
 		if (child.getType().getName() != null) {
 			String prefix = "";
@@ -497,10 +517,8 @@ public class XSDDefinitionMarshaller extends XMLDefinitionMarshaller {
 				}
 			}
 			
-			String typeName = child.getType().getName(child.getProperties());
-			// for all custom types, a "Type" suffix is added because ideally you want to follow the proper naming convention but you can't force this
-			String suffix = NAMESPACE.equals(getNamespace(child.getType())) ? "" : "Type";
-			childElement.setAttribute("type", prefix + typeName + suffix);
+			String typeName = getTypeName(child.getType());
+			childElement.setAttribute("type", prefix + typeName);
 		}
 		else {
 			if (child.getType() instanceof SimpleType) {
@@ -521,7 +539,7 @@ public class XSDDefinitionMarshaller extends XMLDefinitionMarshaller {
 		boolean standalone = parent.getNodeName().equals("schema");
 		Element simpleTypeElement = parent.getOwnerDocument().createElement("simpleType");
 		if (standalone) {
-			simpleTypeElement.setAttribute("name", simpleType.getName() + "Type");
+			simpleTypeElement.setAttribute("name", getTypeName(simpleType));
 		}
 		Element restrictionElement = parent.getOwnerDocument().createElement("restriction");
 		// you can extend a basic type (like string) or another simple type
