@@ -297,10 +297,10 @@ public class XSDDefinitionMarshaller extends XMLDefinitionMarshaller {
 		return list.toArray(new Value[0]);
 	}
 	
-	private String getTypeName(Type type) {
+	private String getTypeName(Type type, Value<?>...values) {
 		// xsd types
 		if (NAMESPACE.equals(getNamespace(type))) {
-			return type.getName();
+			return type.getName(values);
 		}
 		// globally defined types
 		else if (type instanceof DefinedType) {
@@ -517,7 +517,7 @@ public class XSDDefinitionMarshaller extends XMLDefinitionMarshaller {
 				}
 			}
 			
-			String typeName = getTypeName(child.getType());
+			String typeName = getTypeName(child.getType(), child.getProperties());
 			childElement.setAttribute("type", prefix + typeName);
 		}
 		else {
