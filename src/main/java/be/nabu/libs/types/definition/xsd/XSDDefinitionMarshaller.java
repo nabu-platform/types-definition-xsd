@@ -32,6 +32,7 @@ import be.nabu.libs.types.api.SimpleType;
 import be.nabu.libs.types.api.Type;
 import be.nabu.libs.types.base.Choice;
 import be.nabu.libs.types.base.ComplexElementImpl;
+import be.nabu.libs.types.base.Scope;
 import be.nabu.libs.types.base.ValueImpl;
 import be.nabu.libs.types.definition.xml.XMLDefinitionMarshaller;
 import be.nabu.libs.types.properties.EnumerationProperty;
@@ -47,6 +48,7 @@ import be.nabu.libs.types.properties.MinOccursProperty;
 import be.nabu.libs.types.properties.NameProperty;
 import be.nabu.libs.types.properties.NillableProperty;
 import be.nabu.libs.types.properties.PatternProperty;
+import be.nabu.libs.types.properties.ScopeProperty;
 
 
 /**
@@ -58,6 +60,8 @@ import be.nabu.libs.types.properties.PatternProperty;
 public class XSDDefinitionMarshaller extends XMLDefinitionMarshaller {
 
 	public static final String NAMESPACE = "http://www.w3.org/2001/XMLSchema";
+	
+	private boolean hidePrivatelyScoped;
 	
 	private Converter converter = ConverterFactory.getInstance().getConverter();
 	
@@ -367,6 +371,13 @@ public class XSDDefinitionMarshaller extends XMLDefinitionMarshaller {
 			// do not process the value element (if any)
 			if (child.getName().equals(type.get(ComplexType.SIMPLE_TYPE_VALUE)))
 				continue;
+			// in a lot of cases we want to hide privately scoped variables
+			if (hidePrivatelyScoped) {
+				Value<Scope> property = child.getProperty(ScopeProperty.getInstance());
+				if (property != null && property.getValue() == Scope.PRIVATE) {
+					continue;
+				}
+			}
 			Group group = getGroup(type, child);
 			if (group instanceof Choice) {
 				Element childElement = document.createElement("choice");
@@ -618,6 +629,14 @@ public class XSDDefinitionMarshaller extends XMLDefinitionMarshaller {
 	}
 	public void setIncludeSchemaLocation(boolean includeSchemaLocation) {
 		this.includeSchemaLocation = includeSchemaLocation;
+	}
+
+	public boolean isHidePrivatelyScoped() {
+		return hidePrivatelyScoped;
+	}
+
+	public void setHidePrivatelyScoped(boolean hidePrivatelyScoped) {
+		this.hidePrivatelyScoped = hidePrivatelyScoped;
 	}
 	
 }
