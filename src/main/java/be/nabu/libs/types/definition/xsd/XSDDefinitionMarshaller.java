@@ -512,24 +512,31 @@ public class XSDDefinitionMarshaller extends XMLDefinitionMarshaller {
 		}
 		// if the type is named, make sure it exists on the root somewhere
 		if (child.getType().getName() != null) {
-			String prefix = "";
-			// if its not in the xsd namespace, it is custom
-			if (!NAMESPACE.equals(getNamespace(child.getType()))) {
-				// define it if necessary
-				if (child.getType() instanceof SimpleType) {
-					define(parent, (SimpleType<?>) child.getType());
-				}
-				else {
-					define(parent, (ComplexType) child.getType());
-				}
-				prefix = getNamespacePrefix(parent, getNamespace(child.getType()));
-				if (prefix != null && !prefix.isEmpty()) {
-					prefix += ":";
-				}
+			Value<?>[] restrictions = blacklist(whitelist(child.getProperties(), restrictionWhitelist), attributeWhitelist);
+			// check if we need to add restrictions, currently we do this if it is a simple type and references a standard one
+			if (child.getType() instanceof SimpleType && NAMESPACE.equals(getNamespace(child.getType())) && restrictions != null && restrictions.length > 0) {
+				writeSimpleType(childElement, (SimpleType<?>) child.getType(), restrictions);
 			}
-			
-			String typeName = getTypeName(child.getType(), child.getProperties());
-			childElement.setAttribute("type", prefix + typeName);
+			else {
+				String prefix = "";
+				// if its not in the xsd namespace, it is custom
+				if (!NAMESPACE.equals(getNamespace(child.getType()))) {
+					// define it if necessary
+					if (child.getType() instanceof SimpleType) {
+						define(parent, (SimpleType<?>) child.getType());
+					}
+					else {
+						define(parent, (ComplexType) child.getType());
+					}
+					prefix = getNamespacePrefix(parent, getNamespace(child.getType()));
+					if (prefix != null && !prefix.isEmpty()) {
+						prefix += ":";
+					}
+				}
+				
+				String typeName = getTypeName(child.getType(), child.getProperties());
+				childElement.setAttribute("type", prefix + typeName);
+			}
 		}
 		else {
 			if (child.getType() instanceof SimpleType) {
@@ -545,8 +552,12 @@ public class XSDDefinitionMarshaller extends XMLDefinitionMarshaller {
 		return attachments;
 	}
 	
-	@SuppressWarnings("rawtypes")
 	private void writeSimpleType(Node parent, SimpleType<?> simpleType) {
+		writeSimpleType(parent, simpleType, null);
+	}
+	
+	@SuppressWarnings("rawtypes")
+	private void writeSimpleType(Node parent, SimpleType<?> simpleType, Value<?> [] restrictedDefinitions) {
 		boolean standalone = parent.getNodeName().equals("schema");
 		Element simpleTypeElement = parent.getOwnerDocument().createElement("simpleType");
 		if (standalone) {
@@ -558,7 +569,9 @@ public class XSDDefinitionMarshaller extends XMLDefinitionMarshaller {
 		// assume default string as parent is none is given
 		String simpleTypeName = simpleType.getSuperType() == null ? "string" : simpleType.getSuperType().getName();
 		restrictionElement.setAttribute("base", simpleTypeName);
-		Value<?> [] restrictedDefinitions = whitelist(simpleType.getProperties(), restrictionWhitelist);
+		if (restrictedDefinitions == null) {
+			restrictedDefinitions = whitelist(simpleType.getProperties(), restrictionWhitelist);
+		}
 		for (Value<?> restrictedDefinition : restrictedDefinitions) {
 			if (restrictedDefinition.getProperty().equals(new EnumerationProperty())) {
 				for (Object object : (List) restrictedDefinition.getValue()) {
