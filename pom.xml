@@ -3,7 +3,7 @@
 	<groupId>be.nabu.libs.types</groupId>
 	<artifactId>types-definition-xsd</artifactId>
 	<packaging>jar</packaging>
-	<version>1.4</version>
+	<version>1.5-SNAPSHOT</version>
 	<name>types-definition-xsd</name>
 	<url>http://maven.apache.org</url>
 	<parent>
